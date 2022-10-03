@@ -44,6 +44,9 @@ class Yabai:
             self.call(["-m", "space", f"{s.index}", "--destroy"])
         self.call(["-m", "display", "--focus", "1"])
 
+    def balance(self, space_idx: int) -> None:
+        self.call(["-m", "space", str(space_idx), "--balance"])
+
     def get_workspace(self) -> Workspace:
         return Workspace(
             displays=self.displays(), spaces=self.spaces(), windows=self.windows()
@@ -80,3 +83,6 @@ class Yabai:
     def stack_windows(self, window_ids: List[int]) -> None:
         for w1, w2 in zip(window_ids[:-1], window_ids[1:]):
             self.call(["-m", "window", str(w1), "--stack", str(w2)])
+
+    def warp_window(self, warp: int, onto: int) -> None:
+        self.call(["-m", "window", str(warp), "--warp", str(onto)])
