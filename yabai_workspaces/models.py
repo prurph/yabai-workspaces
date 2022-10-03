@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, List
 
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, condecimal, constr
+
 
 Opacity = condecimal(ge=Decimal("0"), le=Decimal("1.0"))
 NonEmptyStr = constr(min_length=1)
@@ -19,6 +20,7 @@ class SpaceType(str, Enum):
 class SplitType(str, Enum):
     auto = "auto"
     horizontal = "horizontal"
+    none = "none"
     vertical = "vertical"
 
 
@@ -47,15 +49,15 @@ class Space(BaseModel):
     type: SpaceType
     display: PositiveInt
     windows: set[PositiveInt]
-    first_window: PositiveInt = Field(..., alias="first-window")
-    last_window: PositiveInt = Field(..., alias="last-window")
+    first_window: NonNegativeInt = Field(..., alias="first-window")  # 0 if no windows
+    last_window: NonNegativeInt = Field(..., alias="last-window")  # 0 if no windows
     has_focus: bool = Field(..., alias="has-focus")
     is_visible: bool = Field(..., alias="is-visible")
     is_native_fullscreen: bool = Field(..., alias="is-native-fullscreen")
 
     class Config:
+        allow_population_by_field_name = True
         use_enum_values = True
-        exclude = {"first_window", "last_window"}
 
 
 class Window(BaseModel):
@@ -88,10 +90,10 @@ class Window(BaseModel):
     is_sticky: bool = Field(..., alias="is-sticky")
     is_topmost: bool = Field(..., alias="is-topmost")
     is_grabbed: bool = Field(..., alias="is-grabbed")
-    yabai_workspaces: dict[str, Any] | None = Field(alias="__yabai_workspaces")
+    yws_data: dict[str, Any] | None = None
 
     class Config:
-        exclude = {"can_move", "can_resize", "is_grabbed", "role", "subrole", "tags"}
+        allow_population_by_field_name = True
 
 
 class WorkspaceMeta(BaseModel):
@@ -101,6 +103,6 @@ class WorkspaceMeta(BaseModel):
 
 class Workspace(BaseModel):
     meta: WorkspaceMeta | None = None
-    displays: dict[PositiveInt, Display]
-    spaces: dict[PositiveInt, Space]
-    windows: dict[PositiveInt, Window]
+    displays: List[Display]
+    spaces: List[Space]
+    windows: List[Window]

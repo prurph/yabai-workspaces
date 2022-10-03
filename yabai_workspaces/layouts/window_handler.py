@@ -15,6 +15,13 @@ class WindowHandler(ABC):
     def will_save(self, win: Window) -> dict[str, Any] | None:
         pass
 
+    # TODO: is this right interface? Does handler just assume the
+    # window is focused when called? Should it have access to Yabai
+    # and be expected to focus the window it's returning?
+    @abstractmethod
+    def will_restore(self, saved: dict[str, Any]) -> None:
+        pass
+
 
 class ChromeHandler(WindowHandler):
     # TODO: don't set up shell stuff in multiple places
@@ -30,11 +37,25 @@ class ChromeHandler(WindowHandler):
             return None
         return {"tabs": self.capture_tabs(win)}
 
+    def will_restore(self, saved: dict[str, Any]) -> None:
+        # TODO: handle case where window already has open tabs. Need to first
+        # determine what contract between handler and layout is regarding
+        # reusing existing windows.
+        open_commands = "\n".join([f'open location "{t}"' for t in saved["tabs"]])
+        restore_tabs = f"""\
+            tell application "Google Chrome"
+                make new window
+                activate
+                {open_commands}
+            end tell
+        """
+        subprocess.check_call(["osascript", "-e", restore_tabs], env=self.env)
+
     def capture_tabs(self, win: Window):
-        # Yabai sees Window titles as <Title> — Google Chrome — <Profile|(Incognito)>
-        # but Chrome reports them without the app and profile.
+        # Window titles are <Title> — Google Chrome — <Profile|(Incognito)>
+        # but Chrome reports them without the app and profile in osacript.
         win_title = re.sub(r" - Google Chrome.+$", "", win.title)
-        jxa = f"""\
+        fetch_tabs = f"""\
             JSON.stringify(Application("Google Chrome")
                 .windows()
                 .find(w => w.title() === "{win_title}")
@@ -43,7 +64,7 @@ class ChromeHandler(WindowHandler):
         """
         return json.loads(
             subprocess.check_output(
-                ["osascript", "-l", "JavaScript", "-e", jxa],
+                ["osascript", "-l", "JavaScript", "-e", fetch_tabs],
                 env=self.env,
             )
         )
