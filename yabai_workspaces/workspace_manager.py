@@ -4,10 +4,10 @@ import logging
 from pathlib import Path
 from typing import List
 
+from .layouts.window_handler import WindowHandler
 from .models import Window, Workspace
 from .utils import ordered_groupby
 from .yabai import Yabai
-from .layouts.window_handler import WindowHandler
 
 
 class WorkspaceManager:

@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from decimal import Decimal
 from enum import Enum
 from typing import Any, List
 
-from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, condecimal, constr
+from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 
-
-Opacity = condecimal(ge=Decimal("0"), le=Decimal("1.0"))
-NonEmptyStr = constr(min_length=1)
+from .types import DecimalPercent, NonEmptyStr
 
 
 class SpaceType(str, Enum):
@@ -72,7 +69,7 @@ class Window(BaseModel):
     display: PositiveInt
     space: PositiveInt
     level: NonNegativeInt
-    opacity: Opacity
+    opacity: DecimalPercent
     split_type: SplitType = Field(..., alias="split-type")
     stack_index: NonNegativeInt = Field(..., alias="stack-index")
     can_move: bool = Field(..., alias="can-move")

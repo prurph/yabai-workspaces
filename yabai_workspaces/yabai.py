@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from .models import Display, Space, Window, Workspace
-
-from enum import Enum
-from typing import List
 import json
-import subprocess
 import logging
 import os
+import subprocess
+from enum import Enum
+from typing import List
+
+from .models import Display, Space, Window, Workspace
 
 ENV = {**os.environ, "PATH": "/opt/homebrew/bin:"}
 

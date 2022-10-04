@@ -5,6 +5,7 @@ from itertools import pairwise, zip_longest
 from pydantic import BaseModel, Field
 
 from ..models import Space
+from ..types import DecimalPercent
 from ..yabai import DirSel, Yabai
 
 
@@ -12,6 +13,7 @@ class LayoutName(str, Enum):
     managed = "managed"
     noop = "noop"
     columns = "columns"
+    main_stack = "main_stack"
 
 
 class Layout(BaseModel, ABC):
@@ -25,23 +27,6 @@ class Layout(BaseModel, ABC):
     @abstractmethod
     def apply(self, space: Space) -> None:
         pass
-
-
-class NoopLayout(Layout):
-    layout = LayoutName.noop
-
-    def apply(self, space: Space) -> None:
-        pass
-
-
-class ManagedLayout(Layout):
-    layout = LayoutName.managed
-
-    def apply(self, space: Space) -> None:
-        for layout in ("float", "bsp"):
-            self.yabai.call(
-                ["-m", "config", "--space", str(space.index), "layout", layout]
-            )
 
 
 class Columns(Layout):
@@ -71,3 +56,28 @@ class Columns(Layout):
                 self.yabai.warp_window(south, north)
 
         self.yabai.balance(space.index)
+
+
+class MainStack(Layout):
+    layout = LayoutName.main_stack
+    width: DecimalPercent
+
+    def apply(self, space: Space) -> None:
+        pass
+
+
+class ManagedLayout(Layout):
+    layout = LayoutName.managed
+
+    def apply(self, space: Space) -> None:
+        for layout in ("float", "bsp"):
+            self.yabai.call(
+                ["-m", "config", "--space", str(space.index), "layout", layout]
+            )
+
+
+class NoopLayout(Layout):
+    layout = LayoutName.noop
+
+    def apply(self, space: Space) -> None:
+        pass
