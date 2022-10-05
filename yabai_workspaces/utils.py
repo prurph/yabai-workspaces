@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
-from typing import OrderedDict, List, TypeVar, TYPE_CHECKING
-
+from itertools import filterfalse, tee
+from typing import TYPE_CHECKING, List, OrderedDict, Tuple, TypeVar
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
@@ -20,3 +21,11 @@ def ordered_groupby(
     for el in sorted(iter, key=lambda x: (sortkeyby(x), sortvaluesby(x))):
         ret.setdefault(sortkeyby(el), []).append(el)
     return ret
+
+
+# Typed version of https://docs.python.org/3/library/itertools.html#itertools-recipes
+def partition(
+    pred: Callable[[_T], bool], iterable: Iterable[_T]
+) -> Tuple[List[_T], List[_T]]:
+    t1, t2 = tee(iterable)
+    return (list(filterfalse(pred, t1)), list(filter(pred, t2)))
