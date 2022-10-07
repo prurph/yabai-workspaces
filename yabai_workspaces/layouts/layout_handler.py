@@ -30,12 +30,12 @@ class LayoutHandler:
                 self._apply_yabai_managed(layout, space)
 
     def _apply_columns(self, layout: ColumnsLayout, space: Space):
-        self.yabai.call(
-            ["-m", "config", "--space", str(space.index), "split_type", "vertical"]
-        )
         # TODO: this unstacks stuff. Maybe we shouldn't do this? Maybe have a ColumnsStacks
         # layout?
         self.yabai.call(["-m", "config", "--space", str(space.index), "layout", "bsp"])
+        self.yabai.call(
+            ["-m", "config", "--space", str(space.index), "split_type", "vertical"]
+        )
 
         rows = list(zip_longest(*[iter(space.windows)] * layout.col_count))
 
