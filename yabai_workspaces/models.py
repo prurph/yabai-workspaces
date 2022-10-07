@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, List
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 
@@ -28,6 +28,28 @@ class Frame(BaseModel):
     h: float
 
 
+class ColumnsLayout(BaseModel):
+    layout_type: Literal["columns"] = "columns"
+    col_count: PositiveInt
+
+
+class NoLayout(BaseModel):
+    layout_type: Literal["no_layout"] = "no_layout"
+
+
+class StackBesideRowsLayout(BaseModel):
+    layout_type: Literal["stack_beside_rows"] = "stack_beside_rows"
+    app_stack_priority: list[NonEmptyStr]
+    secondary_row_count: PositiveInt
+
+
+class YabaiManagedLayout(BaseModel):
+    layout_type: Literal["yabai_managed"] = "yabai_managed"
+
+
+Layout = Union[ColumnsLayout, NoLayout, StackBesideRowsLayout, YabaiManagedLayout]
+
+
 class Display(BaseModel):
     id: PositiveInt
     # Yabai UUIDs don't always seem to match a defined spec, so just use str
@@ -51,6 +73,7 @@ class Space(BaseModel):
     has_focus: bool = Field(..., alias="has-focus")
     is_visible: bool = Field(..., alias="is-visible")
     is_native_fullscreen: bool = Field(..., alias="is-native-fullscreen")
+    yws_layout: Layout = Field(default=NoLayout, discriminator="layout_type")
 
     class Config:
         allow_population_by_field_name = True
@@ -93,13 +116,7 @@ class Window(BaseModel):
         allow_population_by_field_name = True
 
 
-class WorkspaceMeta(BaseModel):
-    name: NonEmptyStr
-    description: NonEmptyStr | None = None
-
-
 class Workspace(BaseModel):
-    meta: WorkspaceMeta | None = None
-    displays: List[Display]
-    spaces: List[Space]
-    windows: List[Window]
+    displays: list[Display]
+    spaces: list[Space]
+    windows: list[Window]

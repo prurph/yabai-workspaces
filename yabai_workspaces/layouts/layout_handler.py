@@ -1,42 +1,35 @@
 import logging
-from abc import ABC, abstractmethod
-from enum import Enum
 from itertools import pairwise, zip_longest
-from typing import List
 
-from pydantic import BaseModel, PositiveInt
-
-from ..models import Space
-from ..types import NonEmptyStr
+from ..models import (
+    ColumnsLayout,
+    Layout,
+    NoLayout,
+    Space,
+    StackBesideRowsLayout,
+    YabaiManagedLayout,
+)
 from ..utils import partition
 from ..yabai import DirSel, Yabai
 
 
-class LayoutName(str, Enum):
-    managed = "managed"
-    noop = "noop"
-    columns = "columns"
-    stack_beside_rows = "stack_beside_rows"
+class LayoutHandler:
+    def __init__(self, yabai: Yabai):
+        self.yabai = yabai
 
+    def apply(self, layout: Layout, space: Space):
+        # TODO: is this better style or is functools.singledispatch?
+        match layout:
+            case ColumnsLayout():
+                self._apply_columns(layout, space)
+            case NoLayout():
+                pass
+            case StackBesideRowsLayout():
+                self._apply_stack_beside_rows(layout, space)
+            case YabaiManagedLayout():
+                self._apply_yabai_managed(layout, space)
 
-class Layout(BaseModel, ABC):
-    layout: LayoutName
-    yabai: Yabai
-
-    class Config:
-        arbitrary_types_allowed = True
-        use_enum_values = True
-
-    @abstractmethod
-    def apply(self, space: Space) -> None:
-        pass
-
-
-class Columns(Layout):
-    layout = LayoutName.columns
-    col_count: PositiveInt
-
-    def apply(self, space: Space) -> None:
+    def _apply_columns(self, layout: ColumnsLayout, space: Space):
         self.yabai.call(
             ["-m", "config", "--space", str(space.index), "split_type", "vertical"]
         )
@@ -44,7 +37,7 @@ class Columns(Layout):
         # layout?
         self.yabai.call(["-m", "config", "--space", str(space.index), "layout", "bsp"])
 
-        rows = list(zip_longest(*[iter(space.windows)] * self.col_count))
+        rows = list(zip_longest(*[iter(space.windows)] * layout.col_count))
 
         for west, east in pairwise(rows[0]):
             if not east:
@@ -60,18 +53,12 @@ class Columns(Layout):
 
         self.yabai.balance(space.index)
 
-
-class StackBesideRows(Layout):
-    layout = LayoutName.stack_beside_rows
-    app_stack_priority: List[NonEmptyStr]
-    secondary_row_count: PositiveInt
-
-    def apply(self, space: Space) -> None:
+    def _apply_stack_beside_rows(self, layout: StackBesideRowsLayout, space: Space):
         self.yabai.call(["-m", "config", "--space", str(space.index), "layout", "bsp"])
 
         windows = [w for w in self.yabai.windows() if w.id in space.windows]
         other_ws, main_ws = partition(
-            lambda x: x.app in self.app_stack_priority, windows
+            lambda x: x.app in layout.app_stack_priority, windows
         )
 
         if not main_ws:
@@ -79,7 +66,7 @@ class StackBesideRows(Layout):
             main_ws, *other_ws = other_ws
             main_ws = [main_ws]
 
-        main_ws.sort(key=lambda x: self.app_stack_priority.index(x.app))
+        main_ws.sort(key=lambda x: layout.app_stack_priority.index(x.app))
         main_ws, other_ws = ([w.id for w in ws] for ws in (main_ws, other_ws))
 
         self.yabai.stack_windows(main_ws)
@@ -90,8 +77,8 @@ class StackBesideRows(Layout):
         self.yabai.set_insert_dir(main_ws[-1], DirSel.EAST)
 
         rows, overflow = (
-            other_ws[0 : self.secondary_row_count],
-            other_ws[self.secondary_row_count :],
+            other_ws[0 : layout.secondary_row_count],
+            other_ws[layout.secondary_row_count :],
         )
         if rows:
             self.yabai.warp_window(rows[0], main_ws[-1])
@@ -102,19 +89,6 @@ class StackBesideRows(Layout):
 
         self.yabai.balance(space.index)
 
-
-class ManagedLayout(Layout):
-    layout = LayoutName.managed
-
-    def apply(self, space: Space) -> None:
-        for layout in ("float", "bsp"):
-            self.yabai.call(
-                ["-m", "config", "--space", str(space.index), "layout", layout]
-            )
-
-
-class NoopLayout(Layout):
-    layout = LayoutName.noop
-
-    def apply(self, space: Space) -> None:
-        pass
+    def _apply_yabai_managed(self, layout: YabaiManagedLayout, space: Space):
+        for l in ("float", "bsp"):
+            self.yabai.call(["-m", "config", "--space", str(space.index), "layout", l])
