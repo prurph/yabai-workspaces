@@ -73,7 +73,6 @@ class Space(BaseModel):
     has_focus: bool = Field(..., alias="has-focus")
     is_visible: bool = Field(..., alias="is-visible")
     is_native_fullscreen: bool = Field(..., alias="is-native-fullscreen")
-    yws_layout: Layout = Field(default=NoLayout, discriminator="layout_type")
 
     class Config:
         allow_population_by_field_name = True
@@ -116,7 +115,15 @@ class Window(BaseModel):
         allow_population_by_field_name = True
 
 
+class WorkspaceDisplay(Display):
+    layout: Layout | None = None
+
+
+class WorkspaceSpace(Space):
+    layout: Layout | None = None
+
+
 class Workspace(BaseModel):
-    displays: list[Display]
-    spaces: list[Space]
+    displays: list[WorkspaceDisplay]
+    spaces: list[WorkspaceSpace]
     windows: list[Window]

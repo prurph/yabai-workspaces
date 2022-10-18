@@ -40,11 +40,6 @@ class Yabai:
     def balance(self, space_idx: int) -> None:
         self.call(["space", str(space_idx), "--balance"])
 
-    def get_workspace(self) -> Workspace:
-        return Workspace(
-            displays=self.displays(), spaces=self.spaces(), windows=self.windows()
-        )
-
     def displays(self) -> List[Display]:
         return [Display.parse_obj(d) for d in self.call(["query", "--displays"])]
 
