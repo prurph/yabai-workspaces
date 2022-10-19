@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List
 
-from .models import Display, Space, Window, Workspace
+from .models import Display, Space, Window
 
 
 class DirSel(str, Enum):
@@ -59,6 +59,20 @@ class Yabai:
 
     def move_window_to_space(self, window_id: int, space_idx: int):
         self.call(["window", str(window_id), "--space", str(space_idx)])
+
+    def register_signal(self, event: str, action: str, label: str):
+        self.call(
+            [
+                "signal",
+                "--add",
+                f"event={event}",
+                f"action={action}",
+                f"label={label}",
+            ]
+        )
+
+    def remove_signal(self, label: str):
+        self.call(["signal", "--remove", label])
 
     def set_insert_dir(self, window_id: int, direction: DirSel) -> None:
         self.call(["window", str(window_id), "--insert", direction.value])
