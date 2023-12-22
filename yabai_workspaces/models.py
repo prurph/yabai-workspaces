@@ -75,7 +75,7 @@ class Space(BaseModel):
     is_native_fullscreen: bool = Field(..., alias="is-native-fullscreen")
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
         use_enum_values = True
 
 
@@ -87,10 +87,10 @@ class Window(BaseModel):
     frame: Frame
     role: str
     subrole: str
-    tags: str
     display: PositiveInt
     space: PositiveInt
-    level: NonNegativeInt
+    level: int
+    layer: Literal["normal", "below", "above"]
     opacity: DecimalPercent
     split_type: SplitType = Field(..., alias="split-type")
     stack_index: NonNegativeInt = Field(..., alias="stack-index")
@@ -98,7 +98,6 @@ class Window(BaseModel):
     can_resize: bool = Field(..., alias="can-resize")
     has_focus: bool = Field(..., alias="has-focus")
     has_shadow: bool = Field(..., alias="has-shadow")
-    has_border: bool = Field(..., alias="has-border")
     has_parent_zoom: bool = Field(..., alias="has-parent-zoom")
     has_fullscreen_zoom: bool = Field(..., alias="has-fullscreen-zoom")
     is_native_fullscreen: bool = Field(..., alias="is-native-fullscreen")
@@ -107,12 +106,11 @@ class Window(BaseModel):
     is_hidden: bool = Field(..., alias="is-hidden")
     is_floating: bool = Field(..., alias="is-floating")
     is_sticky: bool = Field(..., alias="is-sticky")
-    is_topmost: bool = Field(..., alias="is-topmost")
     is_grabbed: bool = Field(..., alias="is-grabbed")
     yws_data: dict[str, Any] | None = None
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class WorkspaceDisplay(Display):

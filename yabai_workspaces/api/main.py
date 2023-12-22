@@ -1,16 +1,12 @@
 import asyncio
 import json
+from contextlib import asynccontextmanager
 from typing import Callable, Literal, Type
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
-from ..models import (
-    NoLayout,
-    Workspace,
-    WorkspaceDisplay,
-    WorkspaceSpace,
-)
+from ..models import NoLayout, Workspace, WorkspaceDisplay, WorkspaceSpace
 from ..yabai import Yabai
 from .yabai_events import (
     ApplicationActivated,
@@ -36,9 +32,6 @@ from .yabai_events import (
     WindowTitleChanged,
     YabaiSignal,
 )
-
-app = FastAPI()
-yabai = Yabai()
 
 signal_handlers: dict[Type[YabaiSignal], list[Callable[..., None]]] = {
     k: []
@@ -67,18 +60,30 @@ signal_handlers: dict[Type[YabaiSignal], list[Callable[..., None]]] = {
     )
 }
 
-current_workspace = None
+current_workspace = Workspace(displays=[], spaces=[], windows=[])
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await initialize_signals()
+    yield
+    await clear_signals()
+    return
+
+
+app = FastAPI(lifespan=lifespan)
+yabai = Yabai()
 
 
 async def refresh_workspace():
     global current_workspace
     current_workspace = Workspace(
         displays=[
-            WorkspaceDisplay(**(d.dict()), layout=NoLayout())
+            WorkspaceDisplay(**(d.model_dump()), layout=NoLayout())
             for d in await yabai.adisplays()
         ],
         spaces=[
-            WorkspaceSpace(**(s.dict()), layout=NoLayout())
+            WorkspaceSpace(**(s.model_dump()), layout=NoLayout())
             for s in await yabai.aspaces()
         ],
         windows=await yabai.awindows(),
@@ -86,7 +91,6 @@ async def refresh_workspace():
     return current_workspace
 
 
-@app.on_event("startup")
 async def initialize_signals() -> None:
     await refresh_workspace()
     for s in signal_handlers.keys():
@@ -100,7 +104,7 @@ async def initialize_signals() -> None:
         # escapes the double quotes so they become part of the generated JSON body.
         params = {
             name: field.default if name == "event_name" else f"'${name.upper()}'"
-            for name, field in s.__fields__.items()
+            for name, field in s.model_fields.items()
         }
         action = f"/usr/bin/curl -s -X POST -H 'Content-Type: application/json' -d '{json.dumps(params)}' localhost:8000/signal"
         await yabai.aregister_signal(
@@ -120,11 +124,10 @@ async def initialize_signals() -> None:
     await proc.wait()
 
 
-@app.on_event("shutdown")
 async def clear_signals() -> None:
     for s in signal_handlers.keys():
         await yabai.aremove_signal(
-            f"yabai-spaces-server-py-{s.__fields__['event_name'].default}"
+            f"yabai-spaces-server-py-{s.model_fields['event_name'].default}"
         )
 
 
@@ -152,7 +155,9 @@ class ConnectionManager:
 
     async def broadcast(self, workspace: Workspace):
         for client in self.clients:
-            await client.send_text(SpacesUpdated(content=workspace).json(by_alias=True))
+            await client.send_text(
+                SpacesUpdated(content=workspace).model_dump_json(by_alias=True)
+            )
 
 
 manager = ConnectionManager()
@@ -167,9 +172,9 @@ async def signal(signal: YabaiSignal):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    print(f"Client connected")
+    print("Client connected")
     await websocket.send_text(
-        SpacesUpdated(content=current_workspace).json(by_alias=True)
+        SpacesUpdated(content=current_workspace).model_dump_json(by_alias=True)
     )
     try:
         while True:
